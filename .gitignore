@@ -42,10 +42,10 @@ dist/
 
 # Data files
 data/input_networks/*
-# Exceptions
 !data/input_networks/base_s_471_elec_.nc
 !data/input_networks/regions_offshore_base_s.geojson
 !data/input_networks/regions_onshore_base_s.geojson
 
 # Results
-results/
+results/*
+!results/.gitkeep

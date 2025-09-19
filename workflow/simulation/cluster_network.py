@@ -10,11 +10,11 @@ buses and transmission corridors.
 Outputs
 -------
 
-- ``resources/regions_onshore_base_s_{clusters}.geojson``: GeoJSON file of onshore regions after clustering.
-- ``resources/regions_offshore_base_s_{clusters}.geojson``: GeoJSON file of offshore regions after clustering.
-- ``resources/busmap_base_s_{clusters}.csv``: Mapping of buses from the original network to the clustered network.
-- ``resources/linemap_base_s_{clusters}.csv``: Mapping of lines from the original network to the clustered network.
-- ``networks/base_s_{clusters}.nc``: NetCDF file of the clustered network.
+- ``data/input_networks/regions_onshore_base_s_{clusters}.geojson``: GeoJSON file of onshore regions after clustering.
+- ``data/input_networks/regions_offshore_base_s_{clusters}.geojson``: GeoJSON file of offshore regions after clustering.
+- ``data/input_networks/busmap_base_s_{clusters}.csv``: Mapping of buses from the original network to the clustered network.
+- ``data/input_networks/linemap_base_s_{clusters}.csv``: Mapping of lines from the original network to the clustered network.
+- ``data/input_networks/base_s_{clusters}.nc``: NetCDF file of the clustered network.
 
 Description
 -----------
