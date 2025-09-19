@@ -1,0 +1,51 @@
+# Python
+*.py[cod]
++$py.class
+__pycache__/
+
+# Virtual envs / Conda
+.venv/
+env/
+venv/
+.conda/
+.env
+.snakemake/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Editor / IDE
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Testing / coverage
+.pytest_cache/
+.cache/
+.coverage
+covergae.xml
+htmlcov/
+
+# Build / packaging
+build/
+dist/
+*.egg-info/
+
+# Logs
+*.Logs
+.log
+
+# Data files
+data/input_networks/*
+# Exceptions
+!data/input_networks/base_s_471_elec_.nc
+!data/input_networks/regions_offshore_base_s.geojson
+!data/input_networks/regions_onshore_base_s.geojson
+
+# Results
+results/

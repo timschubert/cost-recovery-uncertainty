@@ -1,0 +1,29 @@
+name: cost-recovery-uncertainty
+channels:
+- conda-forge
+- bioconda
+- gurobi
+dependencies:
+- python==3.11
+- pip
+- pypsa==0.27.1
+- linopy>=0.3.7
+- snakemake-minimal>=8.5
+- gurobi>=11
+- pandas
+- numpy
+- xarray
+- netcdf4
+- matplotlib
+- country_converter
+- graphviz
+- ipython
+- ipykernel
+- seaborn
+- jupyterlab
+- pre-commit
+- snakemake-storage-plugin-http
+- snakemake-executor-plugin-cluster-generic
+
+- pip:
+  - highspy

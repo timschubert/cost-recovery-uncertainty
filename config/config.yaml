@@ -1,0 +1,153 @@
+# Run identifier (used for organizing results)
+run: "default"
+
+# Scenario setup
+scenario:
+  lt:   # Long-term scenario(s)
+  - fixed_year+2013
+  st:   # Short-term scenario(s)
+  - fixed_year+2013
+
+# Geographic scope
+country: DE
+
+# Input network file
+input_network:
+  filename: "base_s_471_elec_.nc"
+  no_of_clusters: 1   # Number of spatial clusters
+
+# Limited knowledge capacity optimization for market-oriented powerplants
+gen_knowledge_uncertainty:
+  introduce_uncertainty: false
+  line_capacity_fac: 1.0 # x optimized capacity; inf for full nodal, 1.0 for no uncertainty
+  gen_techs: [] # Generation technologies with limited knowledge
+  storage_techs: [] # Storage technologies with limited knoweldge
+
+# Change bidding zone configuration for dispatch
+bidzone_uncertainty:
+  disp_zonal: false
+  dispatch_no_of_zones: 1 # Number of bidding zones according to BZR; currently 1 to 5 supported
+
+# Price elasticity of demand (piecewise definition)
+elasticities:
+  lower_bound: [0, 50, 200]      # Price breakpoints for elasticity definition (€/MWh)
+  elasticity: [-0.04, -0.05, -0.06]  # Elasticity values at each breakpoint (-0.04 = 4% price elasticity)
+  segments_p: # Segments for pwl approximation (only for mathematical operations, independent of elasticity values)
+    - [800, 400]
+    - [400, 200]
+    - [200, 10]
+
+
+# Climate and market constraints
+co2_cap: False
+line_expansion_limit: 1.0
+voll_price: 2000  # Value of Lost Load (€/MWh)
+
+# Time horizon for simulation
+snapshots:
+  start: "2020-01-01"
+  end: "2021-01-01"
+  inclusive: left
+  freq: 1h
+number_years: false
+random_years: false
+fixed_year: false
+
+# Minimum capacity factor for generators (avoid division by 0 errors)
+clip_p_max_pu: 1.e-2
+
+# Cluster synchronization (only relevant if running on HPC)
+cluster-sync:
+  url: z1
+  send-ignore: .syncignore-send
+  receive-ignore: .syncignore-receive
+  cluster-base-dir: SCRATCH/projects/price-formation
+  custom-args: "" # e.g. "-n" for dry-run
+
+# Solver settings
+solver:
+  name: gurobi
+  options: gurobi-default
+  threads: 4
+  mem_mb: 24000
+  runtime: 12h
+
+# Solver settings for myopic runs (rolling horizon optimization)
+myopic_solver:
+  name: gurobi
+  options: gurobi-default
+  threads: 4
+  mem_mb: 8000
+  runtime: 24h
+
+# Standard solver options
+solver_options:
+  gurobi-default:
+    method: 2
+    crossover: 0
+    BarConvTol: 1.e-8
+    Seed: 123
+  gurobi-numeric:
+    method: 2
+    crossover: 0
+    BarConvTol: 1.e-8
+    NumericFocus: 1
+    AggFill: 0
+    PreDual: 0
+  highs-default:
+    run_crossover: "off"
+    primal_feasibility_tolerance: 1e-6
+    dual_feasibility_tolerance: 1e-6
+    ipm_optimality_tolerance: 1e-8
+    parallel: "on"
+    random_seed: 123
+
+# Myopic optimization settings
+myopic:
+  horizon: 72
+  overlap: 48
+  perfect_foresight: true
+  cyclic: true
+  battery_bid: "mean"
+  hydrogen_bid: "mean"
+
+# Export options for NetCDF results
+export_to_netcdf:
+  float32: true
+  compression:
+    zlib: true
+    complevel: 9
+    least_significant_digit: 5
+
+# Network clustering settings
+clustering:
+  focus_weights: false
+  simplify_network:
+    to_substations: false
+    remove_stubs: true
+    remove_stubs_across_borders: false
+  cluster_network:
+    algorithm: kmeans
+    hac_features:
+    - wnd100m
+    - influx_direct
+  exclude_carriers: []
+  consider_efficiency_classes: false
+  aggregation_strategies:
+    generators:
+      committable: any
+      ramp_limit_up: max
+      ramp_limit_down: max
+  temporal:
+    resolution_elec: false
+    resolution_sector: false
+
+# Enable/disable data retrieval and preprocessing steps
+enable:
+  retrieve: auto
+  retrieve_databundle: true
+  retrieve_cost_data: true
+  build_cutout: false
+  retrieve_cutout: true
+  custom_busmap: false
+  drop_leap_day: true

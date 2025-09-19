@@ -1,0 +1,31 @@
+run: "SS-LKL-150"
+
+scenario:
+  lt:
+  - fixed_year+2013
+  st:
+  - fixed_year+2013
+
+input_network:
+  filename: "base_s_471_elec_.nc"
+  no_of_clusters: 150
+
+gen_knowledge_uncertainty:
+  introduce_uncertainty: True
+  line_capacity_fac: 1.3
+  gen_techs: ["solar", "onwind", "offwind-ac"]
+  storage_techs: []
+
+bidzone_uncertainty:
+  disp_zonal: True
+  dispatch_no_of_zones: 1
+
+co2_cap: 76700000 # t; 75% electricity sector emissions reduction relative to 1990 - CO2 excl LULUCF, EEA data, European Environment Agency. Annual European Union greenhouse gas inventory 1990–2021 and inventory report 2023 - CRF Table. https://unfccc.int/documents/627830
+line_expansion_limit: 1.05
+
+voll_price: 2000
+
+snapshots:
+  start: "2013-01-01"
+  end: "2013-12-31"
+  freq: "h"

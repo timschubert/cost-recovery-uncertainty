@@ -1,0 +1,313 @@
+"""
+Snakefile for "Cost Recovery under Uncertainty" Master's Thesis Project'
+Author: Tim Schubert
+Date: 04.08.2025
+"""
+
+import yaml
+from snakemake.utils import min_version
+min_version("8.5")
+
+# --- Configuration ---
+configfile: "config/config.yaml"
+
+# Define local rules that are not part of DAG
+localrules:
+    clean,
+    send,
+    receive
+
+# Wildcard constraints
+wildcard_constraints:
+    lt = "[^/]+"  # long-term scenario cannot include folder separators
+
+# --- Global paths ---
+INPUT_NETWORK = "data/input_networks/"  # folder with input network files
+RESULTS = "results/" + (config["run"] + "/" if config["run"] else "")  # results folder (per run)
+
+# --- Helper functions ---
+
+
+def get_attempt(wildcards, attempt):
+    """Return the current attempt number for retry logic."""
+    return attempt
+
+
+def get_semi_flexible_prepared(wildcards):
+    """
+    Returns the prepared network file for semi-flexible capacity optimization.
+    """
+    if config["gen_knowledge_uncertainty"]["introduce_uncertainty"]:
+        return RESULTS + "network_prepared_limited_knowledge-{lt}.nc"
+    else:
+        return RESULTS + "network_prepared-{lt}.nc"
+
+
+def get_semi_flexible_solved(wildcards):
+    """
+    Returns the solved network file for semi-flexible capacity optimization.
+    """
+    if config["gen_knowledge_uncertainty"]["introduce_uncertainty"]:
+        return RESULTS + "network_solved_limited_knowledge-{lt}.nc"
+    else:
+        return RESULTS + "network_solved_full_knowledge-{lt}.nc"
+
+
+def get_dispatch_prepared(wildcards):
+    """
+    Returns the prepared network file for the dispatch simulation.
+    """
+    if config["bidzone_uncertainty"]["disp_zonal"]:
+        return RESULTS + "network_uncertainty_prepared-{lt}-{st}.nc"
+    else:
+        return RESULTS + "network_semi_flexible_prepared-{lt}.nc"
+
+
+def get_dispatch_solved(wildcards):
+    """
+    Returns the solved network file for the dispatch simulation.
+    """
+    if config["bidzone_uncertainty"]["disp_zonal"]:
+        return RESULTS + "network_uncertainty_solved-{lt}-{st}.nc"
+    else:
+        return RESULTS + "network_semi_flexible_solved-{lt}.nc"
+
+
+# --- Full Knowledge Rules ---
+
+rule prepare_network:
+    input:
+        network=INPUT_NETWORK + config["input_network"]["filename"]
+    output:
+        network=RESULTS + "network_prepared-{lt}.nc"
+    script:
+        "simulation/prepare_network.py"
+
+
+rule solve_full_knowledge:
+    """
+    Full-knowledge capacity optimization (nodal).
+    """
+    input:
+        network=RESULTS + "network_prepared-{lt}.nc"
+    output:
+        network=RESULTS + "network_solved_full_knowledge-{lt}.nc",
+        statistics=RESULTS + "summary/full_knowledge-{lt}/statistics.csv"
+    resources:
+        mem_mb=config["solver"]["mem_mb"],
+        runtime=config["solver"]["runtime"],
+        attempt=get_attempt
+    threads: config["solver"]["threads"]
+    retries: 3
+    benchmark:
+        RESULTS + "benchmarks/full_knowledge-{lt}.log"
+    script:
+        "simulation/solve.py"
+
+
+# --- Generation Knowledge Uncertainty Rules ---
+
+rule add_gen_knowledge_uncertainty:
+    """
+    Add limited market knowledge (generation uncertainty).
+    """
+    input:
+        input_prepared=RESULTS + "network_prepared-{lt}.nc",
+        input_solved=RESULTS + "network_solved_full_knowledge-{lt}.nc"
+    output:
+        network_prepared=RESULTS + "network_prepared_limited_knowledge-{lt}.nc"
+    script:
+        "simulation/add_gen_knowledge_uncertainty.py"
+
+
+rule solve_limited_knowledge:
+    """
+    Limited knowledge capacity optimization (partially zonal).
+    """
+    input:
+        network=RESULTS + "network_prepared_limited_knowledge-{lt}.nc"
+    output:
+        network=RESULTS + "network_solved_limited_knowledge-{lt}.nc",
+        statistics=RESULTS + "summary/limited_knowledge-{lt}/statistics.csv"
+    resources:
+        mem_mb=config["solver"]["mem_mb"],
+        runtime=config["solver"]["runtime"],
+        attempt=get_attempt
+    threads: config["solver"]["threads"]
+    retries: 3
+    benchmark:
+        RESULTS + "benchmarks/limited_knowledge-{lt}.log"
+    script:
+        "simulation/solve.py"
+
+
+# --- Semi-Flexible Demand Rules ---
+
+rule add_semi_flexible_demand:
+    """
+    Modify the network to include semi-flexible demand.
+    """
+    input:
+        input_prepared=lambda wildcards: get_semi_flexible_prepared(wildcards.lt),
+        input_solved=lambda wildcards: get_semi_flexible_solved(wildcards.lt)
+    output:
+        network_prepared=RESULTS + "network_semi_flexible_prepared-{lt}.nc"
+    script:
+        "simulation/add_semi_flexible_demand.py"
+
+
+rule solve_semi_flexible:
+    """
+    Semi-flexible capacity optimization.
+    """
+    input:
+        network=RESULTS + "network_semi_flexible_prepared-{lt}.nc"
+    output:
+        network=RESULTS + "network_semi_flexible_solved-{lt}.nc",
+        statistics=RESULTS + "summary/semi_flexible-{lt}/statistics.csv"
+    resources:
+        mem_mb=config["solver"]["mem_mb"],
+        runtime=config["solver"]["runtime"],
+        attempt=get_attempt
+    threads: config["solver"]["threads"]
+    retries: 3
+    benchmark:
+        RESULTS + "benchmarks/semi_flexible-{lt}.log"
+    script:
+        "simulation/solve.py"
+
+
+# --- Configuration Uncertainty Rules ---
+
+rule add_configuration_uncertainty:
+    """
+    Adjust network bidding zone configuration.
+    """
+    input:
+        input_prepared=RESULTS + "network_semi_flexible_prepared-{lt}.nc",
+        input_solved=RESULTS + "network_semi_flexible_solved-{lt}.nc"
+    output:
+        network_prepared=RESULTS + "network_uncertainty_prepared-{lt}-{st}.nc",
+        network_solved=RESULTS + "network_uncertainty_solved-{lt}-{st}.nc"
+    script:
+        "simulation/add_configuration_uncertainty.py"
+
+
+# --- Dispatch Rules ---
+
+rule solve_dispatch:
+    """
+    Dispatch simulation under (adjusted) zonal configuration.
+    """
+    input:
+        prepared_network=lambda wildcards: get_dispatch_prepared(wildcards),
+        solved_network=lambda wildcards: get_dispatch_solved(wildcards)
+    output:
+        network=RESULTS + "network_dispatch-{lt}-{st}.nc",
+        statistics=RESULTS + "summary/{lt}/{st}/statistics.csv"
+    resources:
+        mem_mb=config["myopic_solver"]["mem_mb"],
+        runtime=config["myopic_solver"]["runtime"]
+    threads: config["myopic_solver"]["threads"]
+    retries: 1
+    benchmark:
+        RESULTS + "benchmarks/{lt}-{st}.log"
+    script:
+        "simulation/solve_dispatch.py"
+
+
+# --- Redispatch Rules ---
+
+rule prepare_redispatch:
+    """
+    Prepare network for redispatch.
+    """
+    input:
+        prepared_dispatch=lambda wildcards: get_dispatch_prepared(wildcards),
+        solved_dispatch=RESULTS + "network_dispatch-{lt}-{st}.nc",
+        solved_capopt_fk=RESULTS + "network_solved_full_knowledge-{lt}.nc"
+    output:
+        network_prepared=RESULTS + "network_redispatch_prepared-{lt}-{st}.nc"
+    script:
+        "simulation/prepare_redispatch.py"
+
+
+rule solve_redispatch:
+    """
+    Solve redispatch.
+    """
+    input:
+        network=RESULTS + "network_redispatch_prepared-{lt}-{st}.nc"
+    output:
+        network=RESULTS + "network_redispatch-{lt}-{st}.nc",
+        statistics=RESULTS + "summary/redispatch-{lt}/{st}/statistics.csv"
+    resources:
+        mem_mb=config["solver"]["mem_mb"],
+        runtime=config["solver"]["runtime"],
+        attempt=get_attempt
+    threads: config["solver"]["threads"]
+    retries: 3
+    benchmark:
+        RESULTS + "benchmarks/redispatch-{lt}-{st}.log"
+    script:
+        "simulation/solve.py"
+
+
+# --- Aggregation Targets ---
+
+rule solve_dispatch_all:
+    input:
+        expand(rules.solve_dispatch.output[0], **config["scenario"])
+    # default_target: True
+
+
+rule solve_redispatch_all:
+    input:
+        expand(
+            rules.solve_redispatch.output[0],
+            lt=config["scenario"]["lt"],
+            st=config["scenario"]["st"],
+        )
+    default_target: True
+
+
+# --- Utility Rules for Cluster Usage ---
+
+rule clean:
+    """
+    Remove all results.
+    """
+    run:
+        import shutil
+        shutil.rmtree("results")
+
+
+rule send:
+    """
+    Sync repository to cluster.
+    """
+    params:
+        send_ignore=config["cluster-sync"]["send-ignore"],
+        url=config["cluster-sync"]["url"],
+        cluster_base_dir=config["cluster-sync"]["cluster-base-dir"],
+        custom_args=config["cluster-sync"]["custom-args"]
+    shell:
+        """
+        rsync -ravzh --progress --update --no-g {params.custom_args} . \
+        --exclude-from={params.send_ignore} {params.url}:{params.cluster_base_dir}
+        """
+
+
+rule receive:
+    """
+    Sync repository from cluster.
+    """
+    params:
+        receive_ignore=config["cluster-sync"]["receive-ignore"],
+        url=config["cluster-sync"]["url"],
+        cluster_base_dir=config["cluster-sync"]["cluster-base-dir"] + "/",
+        custom_args=config["cluster-sync"]["custom-args"]
+    shell:
+        """
+        rsync -ravzh --progress --update --exclude-from={params.receive_ignore} {params.custom_args} {params.url}:{params.cluster_base_dir} .
+        """
