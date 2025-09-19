@@ -1,8 +1,13 @@
 # Cost Recovery under Uncertainty in Energy System Optimization Models
+
 **Author:** Tim Schubert
+
 **First Examiner**: Dr. Mirko Schäfer
+
 **Second Examiner**: Marta Victoria 
+
 **Submission Date:** August 4, 2025
+
 **Abstract:** The debate around optimal electricity market design in Germany has regained momentum following the 2025 Bidding Zone Review, which observes increased economic efficiency under a split of Germany’s unified market. Assessing the impact of such structural policy uncertainty on market participants requires advanced energy system modeling. Yet, many existing models lack the technical granularity, transparency, and asset-level resolution needed to trace cause-effect relationships and assess financial outcomes for individual market participants. In particular, the cost recovery of existing generation and storage assets under market uncertainty remains critically underexplored.
 To address this gap, this thesis develops a deterministic, multi-stage optimization framework to evaluate the financial viability of generation and storage assets under ex- post market uncertainty. The model combines capacity optimization with limited investor congestion awareness, elastic demand, scenario-based zonal dispatch, and a redispatch stage. To evaluate the model, it is applied to a stylized version of Germany’s electricity system, both under its current configuration and zonal splits proposed in the Bidding Zone Review.
 Results show that outcomes are highly sensitive to grid assumptions. A greenfield- optimized grid enables siting based on renewable potential rather than demand proximity, resulting in moderate zonal market price divergence and limited redispatch reduction. Consequently, consumer prices rise in both zones. Generator-level cost recovery reveals that most assets benefit from the split. Solar plants, conventional generation, and storage break even or achieve modest profits post-split, while wind assets remain highly profitable.
