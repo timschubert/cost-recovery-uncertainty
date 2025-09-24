@@ -187,4 +187,4 @@ Calculating with log-log curves would lead to quadratic formulation and therefor
 - Three segments are defined between these breakpoints. In this example, the first ranges from 10 to 200 €/MWh, the second one from 200 to 400 €/MWh and the third one from 400 to 800 €/MWh
 - For each of the three segments, the nominal (=Demand values / x-intercepts), the intercept (with y-axis), and the slope are calculated based on the adjusted k-value in *add_semi_flexible_demand*.
 
-![Illustration](workflow/analysis/pwl_curve.png)
+![Illustration](workflow/analysis/readme_pwl_curve.png)
