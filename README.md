@@ -132,3 +132,59 @@ This notebook contains:
 - Cost recovery and drivers  
 - Redispatch analysis
 - Consumer price dynamics  
+
+
+---
+
+## Clarification on Semi-Flexible Demand Implementation 
+
+The concept and implementation of semi-flexible demand has three functional components:
+1. Multi-step elasticity calculation proposed by Kladnik et al.
+2. Price-dependent elasticity in log-log form proposed by Arnold
+3. Piecewise-linear approximation of elasticity curves
+
+
+### Multi-Step Elasticity Calculation
+
+The concept was originally proposed in *An assessment of the effects of demand response in electricity markets* by Kladnik et al. (2013): [10.1002/etep.666](https://doi.org/10.1002/etep.666). 
+It follows a three-step approach to create a new market equilibrium point considering assumptions for demand response in the electricity system. The approach was adapted to the issue at hand to translate fixed, historic demand time series into a representation of demand elasticity.
+
+- Step 1: Use fixed, historic demand time series as an input assumption for the model and simulate to derive hourly demand-price reference points. This step is conducted in via *solve.py* in the rule *solve_limited_knowledge*.
+- Step 2: Based on these demand-price pairs create a mathematical formulation for demand elasticity. This is done in the rule *add_semi_flexible_demand* via the respective script. The exact mathematical approach is described in 2. and 3. of this clarification.
+- Step 3: Re-run the simulation with demand elasticity formulation for each hour to calculate new demand-price pairs considering the elasticity formulation. This is done in the rule *solve_semi_flexible* via *solve.py*.
+
+
+### Log-log Price-Dependent Elasticity
+
+For the mathematical formulation of the elasticity function itself, the publication *On the functional form of short-term electricity demand response - insights from high-price years in Germany* by F. Arnold (2023) is used: [EWI Working Paper, No 23/06](https://www.ewi.uni-koeln.de/cms/wp-content/uploads/2023/07/EWI_WP_23-06_On_the_functional_of_short-term_electricity_demand_response_F_Arnold.pdf).
+It uses statistical methods to convert historical observations for the German electricity market to derive a log-log form for demand elsticity formulation. Additionally, higher elasticity values are observed for higher price ranges.
+
+These findings are used for the elasticity formulation in this framework.
+- In *config.yaml*, the elasticity ranges and elasticity values are defined:
+  ```yaml
+  elasticities:
+  lower_bound: [0, 50, 200]          # Price breakpoints for elasticity definition (€/MWh)
+  elasticity: [-0.04, -0.05, -0.06]  # Elasticity values at each breakpoint (-0.04 = 4% price elasticity)
+  ```
+  In this example, the first range goes from 0 to 50 €/MWh with a price elasticity of 4%, the second one from 50 to 200 €/MWh at 5%, and the last one sits above 200 €/MWh with 6%.
+- These values are then referenced in *add_semi-flexible_demand* for the log-log formulation. D refers to the demand, p to the price, and k to the scaling parameter of the curve.
+  ```python
+  k = np.log(D) - epsilon * np.log(p)
+  ```
+
+
+### Piecewise-Linear (pwl) Approximation
+
+Calculating with log-log curves would lead to quadratic formulation and therefore would be too computationally expensive. Therefore, a three-segment, piecewise-linear approximation is chosen. The approach follows *Price formation without fuel costs: the interaction of elastic demand with storage bidding* by *Tom Brown et al.* [Link](https://doi.org/10.1016/j.eneco.2025.108483.).
+
+- Fixed price breakpoints are defined in *config.yaml*:
+  ```yaml
+  segments_p: # Fixed price breakpoints for piecewise linear approximation of demand elasticity function (€/MWh)
+    - [800, 400]
+    - [400, 200]
+    - [200, 10]
+  ```
+- Three segments are defined between these breakpoints. In this example, the first ranges from 10 to 200 €/MWh, the second one from 200 to 400 €/MWh and the third one from 400 to 800 €/MWh
+- For each of the three segments, the nominal (=Demand values / x-intercepts), the intercept (with y-axis), and the slope are calculated based on the adjusted k-value in *add_semi_flexible_demand*.
+
+![Illustration](workflow/analysis/pwl_curve.png)

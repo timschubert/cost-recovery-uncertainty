@@ -27,32 +27,39 @@ def compute_pwl_demand_segments(rp_new, config):
     -------
     list of list
         [intercepts, slopes, nominals] for each load-shedding segment.
+    
+    -------
+    Clarifications:
+    - D: Demand
+    - p: Price
+    - ε: Elasticity
+    - k: Scaling parameter of the log-log function
     """
     epsilon_bounds_lower = config["elasticities"]["lower_bound"]
     epsilon_values = config["elasticities"]["elasticity"]
     segments_p = [(float(a), float(b)) for a, b in config["elasticities"]["segments_p"]]
 
     # k computation at new reference point
-    D_new = max(rp_new[0], 1e-10)
-    p_new = max(rp_new[1], 1e-10)
-    epsilon = epsilon_values[bisect_right(epsilon_bounds_lower, p_new) - 1]
-    k_new = np.log(D_new) - epsilon * np.log(p_new)
+    D_new = max(rp_new[0], 1e-10) # Demand at new referene point
+    p_new = max(rp_new[1], 1e-10) # Price at new reference point
+    epsilon = epsilon_values[bisect_right(epsilon_bounds_lower, p_new) - 1] # Select elasticity based on price range
+    k_new = np.log(D_new) - epsilon * np.log(p_new) # New scaling parameter
 
-    # Compute demand values for each segment
+    # PWL approximation step I: Compute demand values for each segment
     segments_D = [
         (np.exp(epsilon * np.log(seg[0]) + k_new),
             np.exp(epsilon * np.log(seg[1]) + k_new))
         for seg in segments_p
     ]
 
-    # Slopes and nominals
+    # PWL approximation step II: Slopes and nominals
     slopes = [
         (seg_p[0] - seg_p[1]) / (seg_d[1] - seg_d[0])
         for seg_d, seg_p in zip(segments_D, segments_p)
     ]
     nominals = [segments_D[0][1], segments_D[1][1] - segments_D[1][0]]
 
-    # Intercepts
+    # PWL approximation step III: Intercepts
     intercepts = []
     for i, (seg_d, seg_p) in enumerate(zip(segments_D, segments_p)):
         if i == 0:
@@ -60,7 +67,7 @@ def compute_pwl_demand_segments(rp_new, config):
         else:
             intercepts.append(seg_p[0])
 
-    # Last nominal from zero-intercept
+    # PWL approximation step IV: Last nominal from zero-intercept
     zero_intercept = intercepts[-1] / slopes[-1]
     nominals.append(zero_intercept)
 

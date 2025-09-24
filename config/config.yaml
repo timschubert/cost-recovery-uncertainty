@@ -32,7 +32,7 @@ bidzone_uncertainty:
 elasticities:
   lower_bound: [0, 50, 200]      # Price breakpoints for elasticity definition (€/MWh)
   elasticity: [-0.04, -0.05, -0.06]  # Elasticity values at each breakpoint (-0.04 = 4% price elasticity)
-  segments_p: # Segments for pwl approximation (only for mathematical operations, independent of elasticity values)
+  segments_p: # Fixed price breakpoints for piecewise linear approximation of demand elasticity function (€/MWh)
     - [800, 400]
     - [400, 200]
     - [200, 10]
